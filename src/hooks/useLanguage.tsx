@@ -13,10 +13,12 @@ import {
 import type { ReactNode } from 'react';
 import type { Language } from '../types';
 import { setLanguage as persistLanguage } from '../lib/actions';
+import { getUserItem, setUserItem } from '../lib/auth/userStorage';
 import { getDict, t as translate, type Dict } from '../i18n';
 import { localizeRankTitle } from '../i18n/localize';
 import { NAV_ITEMS } from '../components/nav';
 import { useLevel as useLevelBase, useProfile, type LevelView } from './data';
+import { useAuth } from './useAuth';
 
 const STORAGE_KEY = 'lifequest-language';
 
@@ -35,9 +37,9 @@ interface TContextValue {
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 const TContext = createContext<TContextValue | null>(null);
 
-function readStoredLanguage(): Language {
-  if (typeof localStorage !== 'undefined') {
-    const stored = localStorage.getItem(STORAGE_KEY);
+function readStoredLanguage(userId: string | null): Language {
+  if (userId) {
+    const stored = getUserItem(STORAGE_KEY, userId);
     if (stored === 'en' || stored === 'th') return stored;
   }
   return 'en';
@@ -51,15 +53,20 @@ function applyLanguage(locale: Language): void {
 }
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const profile = useProfile();
-  const [locale, setLocaleState] = useState<Language>(readStoredLanguage);
+  const [locale, setLocaleState] = useState<Language>(() =>
+    readStoredLanguage(user?.id ?? null),
+  );
+
+  useEffect(() => {
+    setLocaleState(readStoredLanguage(user?.id ?? null));
+  }, [user?.id]);
 
   useEffect(() => {
     applyLanguage(locale);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, locale);
-    }
-  }, [locale]);
+    if (user?.id) setUserItem(STORAGE_KEY, locale, user.id);
+  }, [locale, user?.id]);
 
   useEffect(() => {
     if (profile?.language && profile.language !== locale) {

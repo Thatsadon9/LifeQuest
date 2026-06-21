@@ -12,3 +12,4 @@ export {
   useNavItems,
 } from './useLanguage';
 export { useSyncStatus } from './useSyncStatus';
+export { AuthProvider, useAuth } from './useAuth';

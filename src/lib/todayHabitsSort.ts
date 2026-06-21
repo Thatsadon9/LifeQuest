@@ -4,6 +4,7 @@
 import { localizeQuest } from '../i18n/localize';
 import { questXP } from './gamification';
 import type { Difficulty, Language, QuestCategory, TodayQuest } from '../types';
+import { getUserItem, setUserItem } from './auth/userStorage';
 
 export type TodayHabitSortMode = 'default' | 'difficulty' | 'xp' | 'name' | 'category';
 
@@ -86,7 +87,7 @@ export function sortTodayHabits(
 
 export function loadTodayHabitSortMode(): TodayHabitSortMode {
   try {
-    const raw = localStorage.getItem(SORT_STORAGE_KEY);
+    const raw = getUserItem(SORT_STORAGE_KEY);
     if (
       raw === 'default' ||
       raw === 'difficulty' ||
@@ -104,7 +105,7 @@ export function loadTodayHabitSortMode(): TodayHabitSortMode {
 
 export function saveTodayHabitSortMode(mode: TodayHabitSortMode): void {
   try {
-    localStorage.setItem(SORT_STORAGE_KEY, mode);
+    setUserItem(SORT_STORAGE_KEY, mode);
   } catch {
     /* ignore */
   }

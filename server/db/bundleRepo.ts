@@ -1,5 +1,5 @@
 /**
- * Map LifeQuest records ↔ Postgres rows.
+ * Map LifeQuest records ↔ Postgres rows (per-user).
  */
 import type {
   Completion,
@@ -80,10 +80,10 @@ function json<T>(v: unknown, fallback: T): T {
 
 function rowToProfile(row: Record<string, unknown>): Profile {
   return {
-    id: num(row.id),
+    id: 1,
     name: str(row.name),
     totalXP: num(row.total_xp),
-    theme: row.theme === 'light' ? 'light' : 'dark',
+    theme: row.theme === 'dark' ? 'dark' : 'light',
     language: row.language === 'th' ? 'th' : 'en',
     createdAt: num(row.created_at),
     updatedAt: row.updated_at != null ? num(row.updated_at) : undefined,
@@ -181,6 +181,7 @@ export async function saveBundle(
   sql: {
     query: (query: string, params?: unknown[]) => Promise<unknown>;
   },
+  userId: string,
   bundle: ExportBundle,
 ): Promise<void> {
   const profile = bundle.profile.slice(0, 1);
@@ -191,39 +192,40 @@ export async function saveBundle(
     ).values(),
   ];
 
-  await sql.query('DELETE FROM completions');
-  await sql.query('DELETE FROM quests');
-  await sql.query('DELETE FROM reviews');
-  await sql.query('DELETE FROM skill_nodes');
-  await sql.query('DELETE FROM energy_checkins');
-  await sql.query('DELETE FROM stats');
-  await sql.query('DELETE FROM profile');
+  await sql.query(`DELETE FROM completions WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM quests WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM reviews WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM skill_nodes WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM energy_checkins WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM stats WHERE user_id = $1`, [userId]);
+  await sql.query(`DELETE FROM profile WHERE user_id = $1`, [userId]);
 
   for (const p of profile) {
     await sql.query(
-      `INSERT INTO profile (id, name, total_xp, theme, language, created_at, updated_at)
+      `INSERT INTO profile (user_id, name, total_xp, theme, language, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [p.id, p.name, p.totalXP, p.theme, p.language, p.createdAt, p.updatedAt ?? p.createdAt],
+      [userId, p.name, p.totalXP, p.theme, p.language, p.createdAt, p.updatedAt ?? p.createdAt],
     );
   }
 
   for (const s of bundle.stats) {
     await sql.query(
-      `INSERT INTO stats (key, xp, level, description) VALUES ($1, $2, $3, $4)`,
-      [s.key, s.xp, s.level, s.description],
+      `INSERT INTO stats (user_id, key, xp, level, description) VALUES ($1, $2, $3, $4, $5)`,
+      [userId, s.key, s.xp, s.level, s.description],
     );
   }
 
   for (const q of quests) {
     await sql.query(
       `INSERT INTO quests (
-        id, title, description, type, difficulty, base_xp, stat_targets,
+        user_id, id, title, description, type, difficulty, base_xp, stat_targets,
         minimum_version, normal_version, hero_version, schedule, trigger_text,
         is_active, created_at, category, track_mode, target_count, unit, updated_at
       ) VALUES (
-        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
+        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
       )`,
       [
+        userId,
         q.id,
         q.title,
         q.description,
@@ -250,9 +252,10 @@ export async function saveBundle(
   for (const c of completions) {
     await sql.query(
       `INSERT INTO completions (
-        id, quest_id, date, completion_type, xp_awarded, stat_gains, progress, created_at
-      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        user_id, id, quest_id, date, completion_type, xp_awarded, stat_gains, progress, created_at
+      ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
       [
+        userId,
         c.id,
         c.questId,
         c.date,
@@ -267,9 +270,10 @@ export async function saveBundle(
 
   for (const n of bundle.skillNodes) {
     await sql.query(
-      `INSERT INTO skill_nodes (id, path_id, title, description, requirement, "order", status)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+      `INSERT INTO skill_nodes (user_id, id, path_id, title, description, requirement, "order", status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [
+        userId,
         n.id,
         n.pathId,
         n.title,
@@ -282,17 +286,18 @@ export async function saveBundle(
   }
 
   for (const e of bundle.energyCheckins) {
-    await sql.query(`INSERT INTO energy_checkins (date, value) VALUES ($1, $2)`, [
-      e.date,
-      e.value,
-    ]);
+    await sql.query(
+      `INSERT INTO energy_checkins (user_id, date, value) VALUES ($1, $2, $3)`,
+      [userId, e.date, e.value],
+    );
   }
 
   for (const r of bundle.reviews) {
     await sql.query(
-      `INSERT INTO reviews (id, week_start, week_end, snapshot, answers, created_at)
-       VALUES ($1,$2,$3,$4,$5,$6)`,
+      `INSERT INTO reviews (user_id, id, week_start, week_end, snapshot, answers, created_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
       [
+        userId,
         r.id,
         r.weekStart,
         r.weekEnd,
@@ -308,16 +313,17 @@ export async function loadBundle(
   sql: {
     query: (query: string, params?: unknown[]) => Promise<Record<string, unknown>[]>;
   },
+  userId: string,
 ): Promise<ExportBundle> {
   const [profile, stats, quests, completions, skillNodes, energyCheckins, reviews] =
     await Promise.all([
-      sql.query('SELECT * FROM profile'),
-      sql.query('SELECT * FROM stats'),
-      sql.query('SELECT * FROM quests'),
-      sql.query('SELECT * FROM completions'),
-      sql.query('SELECT * FROM skill_nodes ORDER BY "order"'),
-      sql.query('SELECT * FROM energy_checkins'),
-      sql.query('SELECT * FROM reviews'),
+      sql.query(`SELECT * FROM profile WHERE user_id = $1`, [userId]),
+      sql.query(`SELECT * FROM stats WHERE user_id = $1`, [userId]),
+      sql.query(`SELECT * FROM quests WHERE user_id = $1`, [userId]),
+      sql.query(`SELECT * FROM completions WHERE user_id = $1`, [userId]),
+      sql.query(`SELECT * FROM skill_nodes WHERE user_id = $1 ORDER BY "order"`, [userId]),
+      sql.query(`SELECT * FROM energy_checkins WHERE user_id = $1`, [userId]),
+      sql.query(`SELECT * FROM reviews WHERE user_id = $1`, [userId]),
     ]);
 
   return rowsToBundle({

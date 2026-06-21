@@ -563,7 +563,7 @@ export async function resetData(): Promise<void> {
   pauseSync();
   try {
     await db.transaction('rw', RW_STORES, async () => {
-      await Promise.all(db.tables.map((t) => t.clear()));
+      await Promise.all(RW_STORES.map((t) => t.clear()));
     });
     await ensureSeeded();
   } finally {

@@ -1,5 +1,5 @@
 /**
- * Theme management: dark-first, persisted to both the profile (DB) and
+ * Theme management: light-first default, persisted to both the profile (DB) and
  * localStorage, and applied by toggling the `dark` class on <html>.
  *
  * The DB is the source of truth; localStorage gives an instant value before the
@@ -16,7 +16,9 @@ import {
 import type { ReactNode } from 'react';
 import type { Theme } from '../types';
 import { setTheme as persistTheme } from '../lib/actions';
+import { getUserItem, setUserItem } from '../lib/auth/userStorage';
 import { useProfile } from './data';
+import { useAuth } from './useAuth';
 
 const STORAGE_KEY = 'lifequest-theme';
 
@@ -28,12 +30,12 @@ interface ThemeContextValue {
 
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function readStoredTheme(): Theme {
-  if (typeof localStorage !== 'undefined') {
-    const stored = localStorage.getItem(STORAGE_KEY);
+function readStoredTheme(userId: string | null): Theme {
+  if (userId) {
+    const stored = getUserItem(STORAGE_KEY, userId);
     if (stored === 'light' || stored === 'dark') return stored;
   }
-  return 'dark';
+  return 'light';
 }
 
 function applyTheme(theme: Theme): void {
@@ -42,16 +44,19 @@ function applyTheme(theme: Theme): void {
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const profile = useProfile();
-  const [theme, setThemeState] = useState<Theme>(readStoredTheme);
+  const [theme, setThemeState] = useState<Theme>(() => readStoredTheme(user?.id ?? null));
+
+  useEffect(() => {
+    setThemeState(readStoredTheme(user?.id ?? null));
+  }, [user?.id]);
 
   // Apply the class + persist to localStorage whenever the theme changes.
   useEffect(() => {
     applyTheme(theme);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, theme);
-    }
-  }, [theme]);
+    if (user?.id) setUserItem(STORAGE_KEY, theme, user.id);
+  }, [theme, user?.id]);
 
   // Adopt the DB value once the profile loads (DB is authoritative, e.g. after
   // an import). Setting state to the same value is a no-op, so no loops.

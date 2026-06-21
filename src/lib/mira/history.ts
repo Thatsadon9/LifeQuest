@@ -1,6 +1,7 @@
 /**
- * Mira chat session history — persisted in localStorage.
+ * Mira chat session history — persisted per account in localStorage.
  */
+import { getUserItem, setUserItem, removeUserItem } from '../auth/userStorage';
 import type { MiraConversationTurn } from './types';
 
 const SESSIONS_KEY = 'lifequest-mira-sessions';
@@ -21,7 +22,7 @@ function uid(): string {
 
 function readSessions(): MiraChatSession[] {
   try {
-    const raw = localStorage.getItem(SESSIONS_KEY);
+    const raw = getUserItem(SESSIONS_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw) as MiraChatSession[];
     return Array.isArray(parsed) ? parsed : [];
@@ -31,7 +32,7 @@ function readSessions(): MiraChatSession[] {
 }
 
 function writeSessions(sessions: MiraChatSession[]): void {
-  localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+  setUserItem(SESSIONS_KEY, JSON.stringify(sessions));
 }
 
 function migrateLegacySessionStorage(): MiraChatSession | null {
@@ -69,18 +70,18 @@ export function listMiraSessions(): MiraChatSession[] {
     if (legacy) {
       sessions = [legacy];
       writeSessions(sessions);
-      localStorage.setItem(ACTIVE_KEY, legacy.id);
+      setUserItem(ACTIVE_KEY, legacy.id);
     }
   }
   return sessions.sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 export function getActiveMiraSessionId(): string | null {
-  return localStorage.getItem(ACTIVE_KEY);
+  return getUserItem(ACTIVE_KEY);
 }
 
 export function setActiveMiraSessionId(id: string): void {
-  localStorage.setItem(ACTIVE_KEY, id);
+  setUserItem(ACTIVE_KEY, id);
 }
 
 export function createMiraSession(title = ''): MiraChatSession {
@@ -159,7 +160,7 @@ export function deleteMiraSession(id: string): string | null {
   if (activeId !== id) return activeId;
 
   if (sessions.length === 0) {
-    localStorage.removeItem(ACTIVE_KEY);
+    removeUserItem(ACTIVE_KEY);
     return null;
   }
   setActiveMiraSessionId(sessions[0].id);

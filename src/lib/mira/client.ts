@@ -3,7 +3,7 @@
  */
 import { buildMiraContext } from './context';
 import { executeMiraTools } from './tools';
-import { apiHeaders } from '../api';
+import { apiHeaders, apiInit, apiUrl } from '../api';
 import type {
   MiraChatResponse,
   MiraConversationTurn,
@@ -11,7 +11,6 @@ import type {
 } from './types';
 import type { Language } from '../../types';
 
-const MIRA_API = import.meta.env.VITE_SYNC_API_URL ?? '/api';
 const MAX_TOOL_ROUNDS = 8;
 
 async function miraChatTurn(
@@ -19,7 +18,8 @@ async function miraChatTurn(
   locale: Language,
 ): Promise<MiraChatResponse> {
   const context = await buildMiraContext(locale);
-  const res = await fetch(`${MIRA_API}/mira/chat`, {
+  const res = await fetch(apiUrl('/mira/chat'), {
+    ...apiInit(),
     method: 'POST',
     headers: apiHeaders(),
     body: JSON.stringify({ turns, context, locale }),
@@ -33,7 +33,10 @@ async function miraChatTurn(
 
 export async function checkMiraStatus(): Promise<{ configured: boolean; model: string }> {
   try {
-    const res = await fetch(`${MIRA_API}/mira/status`, { signal: AbortSignal.timeout(2500) });
+    const res = await fetch(apiUrl('/mira/status'), {
+      ...apiInit(),
+      signal: AbortSignal.timeout(2500),
+    });
     if (!res.ok) return { configured: false, model: 'gemini-3.1-flash-lite' };
     return (await res.json()) as { configured: boolean; model: string };
   } catch {

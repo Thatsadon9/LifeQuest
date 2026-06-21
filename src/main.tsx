@@ -4,28 +4,17 @@ import { createRoot } from 'react-dom/client';
 import { registerSW } from 'virtual:pwa-register';
 import './styles/index.css';
 import App from './App';
-import { ThemeProvider, ToastProvider, LanguageProvider } from './hooks';
+import { AuthProvider, ThemeProvider, ToastProvider, LanguageProvider } from './hooks';
 import { ToastNotification } from './components/ToastNotification';
-import { ensureSeeded } from './lib/seed';
-import { syncOnBoot } from './lib/sync';
 
-// Auto-updating service worker (vite-plugin-pwa, registerType: 'autoUpdate').
 registerSW({ immediate: true });
 
-async function bootstrap() {
-  // Populate the DB on first run before the first paint (idempotent).
-  try {
-    await ensureSeeded();
-    await syncOnBoot();
-  } catch (err) {
-    console.error('LifeQuest bootstrap failed:', err);
-  }
+const rootEl = document.getElementById('root');
+if (!rootEl) throw new Error('Root element #root not found');
 
-  const rootEl = document.getElementById('root');
-  if (!rootEl) throw new Error('Root element #root not found');
-
-  createRoot(rootEl).render(
-    <StrictMode>
+createRoot(rootEl).render(
+  <StrictMode>
+    <AuthProvider>
       <LanguageProvider>
         <ThemeProvider>
           <ToastProvider>
@@ -34,8 +23,6 @@ async function bootstrap() {
           </ToastProvider>
         </ThemeProvider>
       </LanguageProvider>
-    </StrictMode>,
-  );
-}
-
-void bootstrap();
+    </AuthProvider>
+  </StrictMode>,
+);

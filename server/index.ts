@@ -1,5 +1,5 @@
 /**
- * LifeQuest sync API — merges client bundles with Neon Postgres.
+ * LifeQuest sync API — auth, per-user sync, and Mira chat.
  */
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -12,8 +12,10 @@ import { fileURLToPath } from 'node:url';
 import { mergeBundles } from '../src/lib/syncMerge.ts';
 import { loadBundle, saveBundle } from './db/bundleRepo.ts';
 import { handleMiraChat, miraStatus } from './mira/chat.ts';
-import { requireApiSecret } from './middleware/auth.ts';
 import { rateLimit } from './middleware/rateLimit.ts';
+import { requireUser, type AuthVariables } from './middleware/userAuth.ts';
+import { registerAuthRoutes } from './routes/auth.ts';
+import { deleteExpiredSessions } from './auth/session.ts';
 import type { ExportBundle, SyncDeletions, SyncRequest, SyncResponse } from '../src/types/index.ts';
 import type { MiraChatRequest } from '../src/lib/mira/types.ts';
 
@@ -22,9 +24,14 @@ neonConfig.webSocketConstructor = ws;
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 loadEnv(resolve(root, '.env'));
 
+if (!process.env.DATABASE_URL) {
+  console.error('DATABASE_URL is required. Copy .env.example to .env and set your Neon connection string.');
+  process.exit(1);
+}
+
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
-const app = new Hono();
+const app = new Hono<{ Variables: AuthVariables }>();
 
 const allowedOrigins = (
   process.env.CORS_ORIGINS?.split(',').map((o) => o.trim()).filter(Boolean) ?? [
@@ -44,18 +51,21 @@ app.use(
     },
     allowMethods: ['GET', 'POST', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
   }),
 );
 
+registerAuthRoutes(app, pool);
+
 app.get('/api/health', (c) =>
-  c.json({ ok: true, service: 'lifequest-sync' }),
+  c.json({ ok: true, service: 'lifequest-api', auth: true }),
 );
 
 app.get('/api/mira/status', (c) => c.json(miraStatus()));
 
 app.post(
   '/api/mira/chat',
-  requireApiSecret(),
+  requireUser(pool),
   rateLimit(24, 60_000),
   async (c) => {
     let body: MiraChatRequest;
@@ -78,9 +88,10 @@ app.post(
 
 app.post(
   '/api/sync',
-  requireApiSecret(),
+  requireUser(pool),
   rateLimit(40, 60_000),
   async (c) => {
+    const userId = c.get('userId');
     let body: SyncRequest;
     try {
       body = (await c.req.json()) as SyncRequest;
@@ -97,8 +108,7 @@ app.post(
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      // Serialize sync — prevents deadlocks / duplicate-key races from concurrent tabs.
-      await client.query('SELECT pg_advisory_xact_lock(834729104)');
+      await client.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [userId]);
 
       const tx = {
         query: async (text: string, params: unknown[] = []) => {
@@ -107,12 +117,12 @@ app.post(
         },
       };
 
-      const remote = await loadBundle(tx);
+      const remote = await loadBundle(tx, userId);
       const merged = mergeBundles(body.bundle, remote, deletions);
       const exportedAt = Date.now();
       const toSave: ExportBundle = { ...merged, exportedAt };
 
-      await saveBundle(tx, toSave);
+      await saveBundle(tx, userId, toSave);
       await client.query('COMMIT');
 
       const response: SyncResponse = { bundle: toSave, exportedAt };
@@ -130,8 +140,10 @@ app.post(
 
 const port = Number(process.env.SYNC_PORT ?? 3001);
 
+void deleteExpiredSessions(pool).catch(() => {});
+
 serve({ fetch: app.fetch, port }, () => {
-  console.log(`LifeQuest sync API listening on http://localhost:${port}`);
+  console.log(`LifeQuest API listening on http://localhost:${port}`);
 });
 
 function loadEnv(path: string) {

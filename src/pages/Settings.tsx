@@ -6,7 +6,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent, ReactNode } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -18,6 +18,7 @@ import {
   Download,
   Languages,
   Loader2,
+  LogOut,
   MessageCircle,
   Moon,
   Palette,
@@ -29,7 +30,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '../components';
 import { SettingsPageSkeleton, SkeletonScreen } from '../components/skeleton';
-import { useLanguage, useProfile, useSyncStatus, useTheme, useToast, useT } from '../hooks';
+import { useAuth, useLanguage, useProfile, useSyncStatus, useTheme, useToast, useT } from '../hooks';
 import { checkMiraStatus } from '../lib/mira/client';
 import {
   exportData,
@@ -38,6 +39,7 @@ import {
   setProfileName,
 } from '../lib/actions';
 import { todayKey } from '../lib/date';
+import { getUserItem, setUserItem } from '../lib/auth/userStorage';
 import type { Language, Theme } from '../types';
 
 const NOTIFY_KEY = 'lifequest-notifications';
@@ -132,6 +134,8 @@ function Toggle({
 
 export function Settings() {
   const profile = useProfile();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
   const { locale, setLanguage } = useLanguage();
   const { toast } = useToast();
@@ -152,13 +156,13 @@ export function Settings() {
 
   const [notify, setNotify] = useState(false);
   useEffect(() => {
-    if (typeof localStorage !== 'undefined') {
-      setNotify(localStorage.getItem(NOTIFY_KEY) === '1');
+    if (user?.id) {
+      setNotify(getUserItem(NOTIFY_KEY, user.id) === '1');
     }
-  }, []);
+  }, [user?.id]);
 
   const [exporting, setExporting] = useState(false);
-  const [dialog, setDialog] = useState<'import' | 'reset' | null>(null);
+  const [dialog, setDialog] = useState<'import' | 'reset' | 'logout' | null>(null);
   const [pendingImport, setPendingImport] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -235,9 +239,7 @@ export function Settings() {
 
   function handleNotifyChange(next: boolean) {
     setNotify(next);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(NOTIFY_KEY, next ? '1' : '0');
-    }
+    if (user?.id) setUserItem(NOTIFY_KEY, next ? '1' : '0', user.id);
     toast({
       title: next ? t('settings.notifications.on') : t('settings.notifications.off'),
       message: t('settings.notifications.saved'),
@@ -334,6 +336,15 @@ export function Settings() {
     }
   }
 
+  async function confirmLogout() {
+    setDialog(null);
+    try {
+      await logout();
+    } finally {
+      navigate('/login', { replace: true });
+    }
+  }
+
   if (profile === undefined) {
     return (
       <SkeletonScreen label={t('common.loading')}>
@@ -355,6 +366,25 @@ export function Settings() {
         initial="hidden"
         animate="show"
       >
+        {/* Account -------------------------------------------------------- */}
+        {user && (
+          <SettingCard
+            icon={LogOut}
+            accent="var(--color-wis)"
+            title={t('auth.accountTitle')}
+            description={t('auth.signedInAs', { email: user.email })}
+          >
+            <button
+              type="button"
+              onClick={() => setDialog('logout')}
+              className="btn-brutal btn-brutal-ghost px-4 py-2.5 text-sm"
+            >
+              <LogOut size={16} />
+              {t('auth.logout')}
+            </button>
+          </SettingCard>
+        )}
+
         {/* Profile -------------------------------------------------------- */}
         <SettingCard
           icon={UserRound}
@@ -577,6 +607,17 @@ export function Settings() {
         cancelLabel={t('settings.resetConfirm.cancel')}
         danger
         onConfirm={confirmReset}
+        onCancel={() => setDialog(null)}
+      />
+
+      <ConfirmDialog
+        open={dialog === 'logout'}
+        title={t('auth.logoutConfirm')}
+        message={t('auth.logoutMessage')}
+        confirmLabel={t('auth.logout')}
+        cancelLabel={t('common.cancel')}
+        danger
+        onConfirm={() => void confirmLogout()}
         onCancel={() => setDialog(null)}
       />
     </section>

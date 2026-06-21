@@ -10,6 +10,8 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:3001',
         changeOrigin: true,
+        // Keep session cookies on the Vite dev origin (localhost:5173).
+        cookieDomainRewrite: '',
       },
     },
   },
@@ -23,8 +25,8 @@ export default defineConfig({
         name: 'LifeQuest',
         short_name: 'LifeQuest',
         description: 'Turn your real life into an RPG.',
-        theme_color: '#0b0b12',
-        background_color: '#0b0b12',
+        theme_color: '#fff9eb',
+        background_color: '#fff9eb',
         display: 'standalone',
         start_url: '/',
         icons: [

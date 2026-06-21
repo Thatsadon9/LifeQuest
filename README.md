@@ -57,6 +57,7 @@ idea: **progress beats perfection, and showing up at all is a win.**
 
 | Route             | Screen      | Notes                                            |
 | ----------------- | ----------- | ------------------------------------------------ |
+| `/login`          | Login       | Register / sign in (session cookie)              |
 | `/`               | Today       | Daily quest board + energy check-in              |
 | `/mira`           | Mira        | AI chat with session history                     |
 | `/character`      | Character   | Stats and progression                            |
@@ -91,11 +92,14 @@ npm install
 # 2. Copy env template and fill in secrets
 cp .env.example .env
 
-# 3. Frontend only (http://localhost:5173)
-npm run dev
+# 3. Apply database schema (required for accounts + sync)
+npm run db:migrate
 
-# 4. Frontend + sync/Mira API (ports 5173 + 3001)
+# 4. Frontend + API (required for login — ports 5173 + 3001)
 npm run dev:all
+
+# Frontend only (no login — app redirects to /login and API calls fail)
+# npm run dev
 
 # 5. Type-check + production build
 npm run build
@@ -104,31 +108,39 @@ npm run build
 npm run preview
 ```
 
-On first run the database is seeded with starter quests, stats, and skill nodes.
+Create an account at `/login`, then use the app. Each account has its own cloud save.
 
 ### Environment variables
 
 | Variable | Where | Purpose |
 | -------- | ----- | ------- |
-| `DATABASE_URL` | server | Neon Postgres for cloud sync |
+| `DATABASE_URL` | server | **Required.** Neon Postgres connection string |
 | `GEMINI_API_KEY` | server | Mira chat (Google AI Studio) |
 | `GEMINI_MODEL` | server | Optional model override |
-| `LIFEQUEST_API_SECRET` | server | Bearer token for `/api/sync` and `/api/mira/chat` |
-| `VITE_LIFEQUEST_API_SECRET` | client | Same secret sent from the browser |
-| `CORS_ORIGINS` | server | Comma-separated allowed origins (production) |
+| `SESSION_DAYS` | server | Session cookie lifetime in days (default `30`) |
+| `CORS_ORIGINS` | server | Comma-separated allowed origins (set in production) |
 | `SYNC_PORT` | server | API port (default `3001`) |
 | `VITE_SYNC_API_URL` | client | API base URL (default `/api`, proxied in dev) |
 
-In **production**, set `LIFEQUEST_API_SECRET` and matching `VITE_LIFEQUEST_API_SECRET`.
-In **development**, the API allows unauthenticated requests when the secret is unset.
+### Database setup (Neon)
 
-### Database migration (Neon)
+1. Create a project at [Neon](https://console.neon.tech).
+2. Copy the **connection string** into `.env` as `DATABASE_URL`.
+3. Run migrations:
 
 ```bash
 npm run db:migrate
 ```
 
-Applies `server/db/schema.sql` (drops legacy tables no longer used by the app).
+This applies `server/db/schema.sql` (users, sessions, per-user game tables) and any files in `server/db/migrations/`.
+
+**Upgrading an older database** without `user_id` columns: `migrations/002_user_auth.sql` drops legacy global tables before the new schema is applied. Back up first if you have data to keep.
+
+Verify connectivity:
+
+```bash
+npm run db:test
+```
 
 ### Regenerating app icons
 
@@ -138,17 +150,24 @@ npm run gen-icons
 
 ---
 
-## Cloud sync & security
+## Accounts, sync & security
 
-- **Local-first.** IndexedDB is the source of truth; the app works offline.
-- **Sync.** When the API is reachable, writes debounce to `POST /api/sync`, which
-  merges bundles with Postgres using last-write-wins rules per record.
-- **Auth.** Sync and Mira chat require `Authorization: Bearer <LIFEQUEST_API_SECRET>`
-  when the secret is configured on the server.
-- **Rate limits.** Mira chat and sync are limited per IP (in-memory) to reduce abuse.
-- **CORS.** Only origins listed in `CORS_ORIGINS` (or localhost defaults) are allowed.
+- **Register / Login** at `/login`. Passwords are hashed with **scrypt** on the server.
+- **Session cookie** (`lq_session`, httpOnly, SameSite=Lax) keeps you signed in for 30 days (configurable via `SESSION_DAYS`).
+- **Per-account data** — every game table in Postgres is scoped by `user_id`. Sync and Mira only work for the signed-in user.
+- **Local isolation** — switching accounts clears IndexedDB on this device, then pulls that account's cloud bundle.
+- **Rate limits** — login, register, sync, and Mira are limited per IP.
+- **CORS** — set `CORS_ORIGINS` in production; credentials (cookies) require an explicit origin list.
 
-`/api/health` and `/api/mira/status` stay public for connectivity checks.
+| Endpoint | Auth |
+| -------- | ---- |
+| `POST /api/auth/register` | Public |
+| `POST /api/auth/login` | Public |
+| `POST /api/auth/logout` | Cookie |
+| `GET /api/auth/me` | Cookie |
+| `POST /api/sync` | Cookie (session) |
+| `POST /api/mira/chat` | Cookie (session) |
+| `GET /api/health` | Public |
 
 ---
 
@@ -187,8 +206,7 @@ lifequest/
 └─ vite.config.ts       # `/api` → localhost:3001 in dev
 ```
 
-**Architecture:** pages read through hooks, write through `actions.ts`; optional
-sync/Mira call the self-hosted API with a shared secret.
+**Architecture:** pages read through hooks, write through `actions.ts`; sync/Mira use session cookies via the self-hosted API.
 
 ---
 

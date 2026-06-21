@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { MiraChat } from '../components/MiraChat';
 import { MiraPageSkeleton, SkeletonScreen } from '../components/skeleton';
-import { useProfile, useT } from '../hooks';
+import { useAuth, useProfile, useT } from '../hooks';
 import {
   beginNewMiraSession,
   deleteMiraSession,
@@ -21,6 +21,7 @@ const NEW_CHAT_COOLDOWN_MS = 700;
 
 export default function Mira() {
   const { t } = useT();
+  const { user } = useAuth();
   const profile = useProfile();
   const defaultTitle = t('mira.defaultTitle');
   const [sessions, setSessions] = useState(() => listMiraSessions());
@@ -31,6 +32,13 @@ export default function Mira() {
   });
   const [historyOpen, setHistoryOpen] = useState(false);
   const lastNewChatAt = useRef(0);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const session = ensureActiveMiraSession(defaultTitle);
+    setSessions(listMiraSessions());
+    setActiveId(session.id);
+  }, [user?.id, defaultTitle]);
 
   useEffect(() => {
     if (sessions.some((s) => s.id === activeId)) return;

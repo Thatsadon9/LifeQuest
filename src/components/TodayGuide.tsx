@@ -5,23 +5,19 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, Sparkles, X } from 'lucide-react';
 import { useT } from '../hooks';
+import { getUserItem, setUserItem } from '../lib/auth/userStorage';
 
 const STORAGE_KEY = 'lifequest-guide-dismissed';
 
 export function TodayGuide() {
   const { t } = useT();
-  const [visible, setVisible] = useState(() => {
-    if (typeof localStorage === 'undefined') return true;
-    return localStorage.getItem(STORAGE_KEY) !== '1';
-  });
+  const [visible, setVisible] = useState(() => getUserItem(STORAGE_KEY) !== '1');
 
   if (!visible) return null;
 
   function dismiss() {
     setVisible(false);
-    if (typeof localStorage !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, '1');
-    }
+    setUserItem(STORAGE_KEY, '1');
   }
 
   const steps = [

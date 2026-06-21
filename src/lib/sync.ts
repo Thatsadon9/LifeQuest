@@ -3,13 +3,13 @@
  */
 import { db, RW_STORES } from './db';
 import { bundleChanged } from './syncMerge';
-import { apiHeaders } from './api';
+import { apiHeaders, apiInit, apiUrl } from './api';
+import { getUserItem, removeUserItem, setUserItem } from './auth/userStorage';
 import type { ExportBundle, SyncDeletions, SyncResponse } from '../types';
 
 const EXPORT_VERSION = 2;
 const LAST_SYNC_KEY = 'lifequest-last-synced-at';
 const DELETIONS_KEY = 'lifequest-pending-deletions';
-const SYNC_API = import.meta.env.VITE_SYNC_API_URL ?? '/api';
 const HEALTH_TIMEOUT_MS = 2500;
 
 export type SyncStatus = 'idle' | 'syncing' | 'ok' | 'offline' | 'error';
@@ -36,7 +36,7 @@ export function getSyncError(): string | null {
 }
 
 export function getLastSyncedAt(): number | null {
-  const raw = localStorage.getItem(LAST_SYNC_KEY);
+  const raw = getUserItem(LAST_SYNC_KEY);
   if (!raw) return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
@@ -58,7 +58,7 @@ export function resumeSync(): void {
 
 function loadDeletions(): SyncDeletions {
   try {
-    const raw = localStorage.getItem(DELETIONS_KEY);
+    const raw = getUserItem(DELETIONS_KEY);
     return raw ? (JSON.parse(raw) as SyncDeletions) : {};
   } catch {
     return {};
@@ -71,10 +71,10 @@ function saveDeletions(deletions: SyncDeletions): void {
     (deletions.completions?.length ?? 0) > 0 ||
     (deletions.reviews?.length ?? 0) > 0;
   if (!hasAny) {
-    localStorage.removeItem(DELETIONS_KEY);
+    removeUserItem(DELETIONS_KEY);
     return;
   }
-  localStorage.setItem(DELETIONS_KEY, JSON.stringify(deletions));
+  setUserItem(DELETIONS_KEY, JSON.stringify(deletions));
 }
 
 export function queueDeletion(table: keyof SyncDeletions, id: string): void {
@@ -86,7 +86,7 @@ export function queueDeletion(table: keyof SyncDeletions, id: string): void {
 }
 
 function clearDeletions(): void {
-  localStorage.removeItem(DELETIONS_KEY);
+  removeUserItem(DELETIONS_KEY);
 }
 
 /** Build an in-memory export bundle (same shape as backup JSON). */
@@ -134,7 +134,8 @@ export async function applyMergedBundle(bundle: ExportBundle): Promise<void> {
 async function isSyncApiAvailable(): Promise<boolean> {
   if (!navigator.onLine) return false;
   try {
-    const res = await fetch(`${SYNC_API}/health`, {
+    const res = await fetch(apiUrl('/health'), {
+      ...apiInit(),
       method: 'GET',
       signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS),
     });
@@ -173,7 +174,8 @@ export async function syncNow(): Promise<SyncStatus> {
     try {
       const local = await exportBundleObject();
       const deletions = loadDeletions();
-      const res = await fetch(`${SYNC_API}/sync`, {
+      const res = await fetch(apiUrl('/sync'), {
+        ...apiInit(),
         method: 'POST',
         headers: apiHeaders(),
         body: JSON.stringify({ bundle: local, deletions }),
@@ -193,7 +195,7 @@ export async function syncNow(): Promise<SyncStatus> {
       if (bundleChanged(local, data.bundle)) {
         await applyMergedBundle(data.bundle);
       }
-      localStorage.setItem(LAST_SYNC_KEY, String(data.exportedAt));
+      setUserItem(LAST_SYNC_KEY, String(data.exportedAt));
       clearDeletions();
       setStatus('ok');
       return 'ok';

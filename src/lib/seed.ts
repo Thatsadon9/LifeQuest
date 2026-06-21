@@ -33,7 +33,7 @@ export async function ensureSeeded(): Promise<void> {
         id: 1,
         name: 'Hero',
         totalXP: 0,
-        theme: 'dark',
+        theme: 'light',
         language: 'en',
         createdAt: now,
         updatedAt: now,

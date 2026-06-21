@@ -29,7 +29,7 @@ export type CompletionType = 'minimum' | 'normal' | 'hero' | 'skip';
 /** Momentum bands derived from the momentum score (0–100). */
 export type MomentumStatus = 'Cold' | 'Warming Up' | 'Flowing' | 'On Fire';
 
-/** Colour theme. The app is dark-first. */
+/** Colour theme. Default is light. */
 export type Theme = 'dark' | 'light';
 
 /** UI language. */
@@ -366,4 +366,11 @@ export interface SyncRequest {
 export interface SyncResponse {
   bundle: ExportBundle;
   exportedAt: number;
+}
+
+/** Authenticated account (server session). */
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName: string;
 }
