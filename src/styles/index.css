@@ -1,0 +1,549 @@
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ============================================================================
+ * Neo Brutalism design tokens — bold borders, hard shadows, vivid flat color.
+ * Dark-first; light mode uses warm cream + black ink.
+ * ========================================================================= */
+@theme {
+  --color-app: #0f0f14;
+  --color-surface: #1a1a24;
+  --color-surface-2: #252532;
+  --color-border: #f5f5f5;
+
+  --color-text: #f4f4f8;
+  --color-muted: #c4c4d4;
+
+  --color-primary: #a855f7;
+  --color-primary-soft: #d8b4fe;
+  --color-success: #4ade80;
+  --color-warning: #facc15;
+  --color-hero: #fb923c;
+  --color-danger: #f87171;
+
+  --color-int: #38bdf8;
+  --color-focus: #818cf8;
+  --color-str: #fb7185;
+  --color-wis: #2dd4bf;
+  --color-cha: #e879f9;
+  --color-craft: #fbbf24;
+  --color-coin: #34d399;
+
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-thai: "IBM Plex Sans Thai", "Space Grotesk", ui-sans-serif, sans-serif;
+
+  --radius-brutal: 0.5rem;
+}
+
+html:not(.dark) {
+  --color-app: #fff9eb;
+  --color-surface: #ffffff;
+  --color-surface-2: #f3e8ff;
+  --color-border: #0a0a0a;
+  --color-text: #0a0a0a;
+  --color-muted: #52525b;
+  --color-primary: #9333ea;
+  --color-primary-soft: #7e22ce;
+}
+
+:root {
+  /* Always dark — for text on light/vivid fills (never flips in dark mode) */
+  --color-ink: #0a0a0a;
+  --color-on-primary: #ffffff;
+  --color-on-vivid: #0a0a0a;
+  --color-recovery-bg: #ede9fe;
+  --color-recovery-text: #3b0764;
+  --color-recovery-muted: #5b21b6;
+
+  --brutal-ink: #0a0a0a;
+  --brutal-stroke: 2.5px;
+  --brutal-shadow-x: 4px;
+  --brutal-shadow-y: 4px;
+  --brutal-shadow-color: var(--brutal-ink);
+}
+
+html.dark {
+  --brutal-ink: #fafafa;
+  --brutal-shadow-color: #000000;
+  --color-recovery-bg: #3b0764;
+  --color-recovery-text: #f3e8ff;
+  --color-recovery-muted: #d8b4fe;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+  html:not(.dark) {
+    color-scheme: light;
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background-color: var(--color-app);
+    color: var(--color-text);
+    font-family: var(--font-sans);
+    font-weight: 500;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  html.lang-th {
+    line-height: 1.65;
+  }
+
+  html.lang-th body {
+    font-family: var(--font-thai);
+  }
+
+  /* Dot-grid paper texture */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    opacity: 0.35;
+    background-image: radial-gradient(
+      circle,
+      color-mix(in oklab, var(--brutal-ink) 18%, transparent) 1px,
+      transparent 1px
+    );
+    background-size: 22px 22px;
+  }
+
+  html:not(.dark) body::before {
+    opacity: 0.12;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  ::selection {
+    background: var(--color-warning);
+    color: var(--brutal-ink);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+}
+
+@layer components {
+  /* Hard-offset card — core brutal surface */
+  .card {
+    border-radius: var(--radius-brutal);
+    background-color: var(--color-surface);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    box-shadow: var(--brutal-shadow-x) var(--brutal-shadow-y) 0 0
+      var(--brutal-shadow-color);
+  }
+
+  .card-flat {
+    border-radius: var(--radius-brutal);
+    background-color: var(--color-surface);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+  }
+
+  .surface-2 {
+    background-color: var(--color-surface-2);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    border-radius: var(--radius-brutal);
+  }
+
+  /* Flat brand block (replaces gradient header) */
+  .gradient-header,
+  .brutal-header {
+    background-color: var(--color-primary);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    box-shadow: 3px 3px 0 0 var(--brutal-shadow-color);
+    color: var(--color-on-primary);
+  }
+
+  html:not(.dark) .gradient-header,
+  html:not(.dark) .brutal-header {
+    color: var(--color-on-vivid);
+    background-color: var(--color-warning);
+  }
+
+  .text-gradient {
+    color: var(--color-primary);
+    -webkit-text-fill-color: unset;
+    background: none;
+  }
+
+  html:not(.dark) .text-gradient {
+    color: var(--color-primary-soft);
+  }
+
+  /* Chunky button */
+  .btn-brutal {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+    border-radius: var(--radius-brutal);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    box-shadow: var(--brutal-shadow-x) var(--brutal-shadow-y) 0 0
+      var(--brutal-shadow-color);
+    font-weight: 700;
+    transition: transform 0.08s ease, box-shadow 0.08s ease;
+  }
+
+  .btn-brutal:active:not(:disabled) {
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 0 var(--brutal-shadow-color);
+  }
+
+  .btn-brutal:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-brutal-primary {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  html:not(.dark) .btn-brutal-primary {
+    color: var(--color-on-vivid);
+    background-color: var(--color-warning);
+  }
+
+  .btn-brutal-ghost {
+    background-color: var(--color-surface);
+    color: var(--color-text);
+  }
+
+  .btn-brutal-danger {
+    background-color: var(--color-danger);
+    color: var(--color-on-vivid);
+  }
+
+  .btn-brutal-success {
+    background-color: var(--color-success);
+    color: var(--color-on-vivid);
+  }
+
+  /* Secondary copy — readable on dark surfaces */
+  .text-secondary {
+    color: var(--color-muted);
+  }
+
+  /* Recovery / vivid card — guaranteed contrast */
+  .card-recovery {
+    background-color: var(--color-recovery-bg);
+    color: var(--color-recovery-text);
+  }
+
+  .card-recovery .text-secondary {
+    color: var(--color-recovery-muted);
+  }
+
+  .card-recovery .surface-2 {
+    background-color: color-mix(in oklab, var(--color-recovery-bg) 72%, #fff 28%);
+    border-color: var(--color-recovery-text);
+  }
+
+  html.dark .card-recovery .surface-2 {
+    background-color: color-mix(in oklab, var(--color-recovery-bg) 80%, #000 20%);
+    border-color: var(--brutal-ink);
+  }
+
+  html.dark .card-recovery .surface-2 .text-secondary {
+    color: var(--color-primary-soft);
+  }
+
+  /* Badge pill with thick border */
+  .badge-brutal {
+    display: inline-flex;
+    align-items: center;
+    border-radius: var(--radius-brutal);
+    border: 2px solid var(--brutal-ink);
+    padding: 0.125rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    box-shadow: 2px 2px 0 0 var(--brutal-shadow-color);
+  }
+
+  /* Always dark text on saturated badge fills */
+  .badge-vivid {
+    color: var(--color-on-vivid);
+  }
+
+  /* Segmented control container */
+  .segment-brutal {
+    display: grid;
+    gap: 0.375rem;
+    padding: 0.375rem;
+    border-radius: var(--radius-brutal);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    background-color: var(--color-surface-2);
+    box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--brutal-ink) 8%, transparent);
+  }
+
+  .segment-brutal-item {
+    border-radius: calc(var(--radius-brutal) - 2px);
+    border: 2px solid transparent;
+    font-weight: 700;
+    transition: background-color 0.12s, border-color 0.12s, box-shadow 0.12s;
+  }
+
+  .segment-brutal-item[data-active="true"] {
+    background-color: var(--color-primary);
+    border-color: var(--brutal-ink);
+    color: var(--color-on-primary);
+    box-shadow: 2px 2px 0 0 var(--brutal-shadow-color);
+  }
+
+  html:not(.dark) .segment-brutal-item[data-active="true"] {
+    background-color: var(--color-warning);
+    color: var(--color-on-vivid);
+  }
+
+  .segment-brutal-item[data-active="false"] {
+    color: var(--color-muted);
+  }
+
+  .segment-brutal-item[data-active="false"]:hover {
+    color: var(--color-text);
+    background-color: var(--color-surface);
+  }
+
+  /* Nav link — brutal */
+  .nav-brutal {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    border-radius: var(--radius-brutal);
+    border: 2px solid transparent;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 700;
+    transition: transform 0.08s, box-shadow 0.08s, background-color 0.12s;
+  }
+
+  .nav-brutal[data-active="true"] {
+    background-color: var(--color-primary);
+    border-color: var(--brutal-ink);
+    color: var(--color-on-primary);
+    box-shadow: 3px 3px 0 0 var(--brutal-shadow-color);
+  }
+
+  html:not(.dark) .nav-brutal[data-active="true"] {
+    background-color: var(--color-warning);
+    color: var(--color-on-vivid);
+  }
+
+  html.dark .nav-brutal[data-active="true"] {
+    background-color: var(--color-primary);
+    color: var(--color-on-primary);
+  }
+
+  .nav-brutal[data-active="false"] {
+    color: var(--color-muted);
+  }
+
+  .nav-brutal[data-active="false"]:hover {
+    color: var(--color-text);
+    background-color: var(--color-surface-2);
+    border-color: var(--brutal-ink);
+  }
+
+  /* Progress track — square brutal bar */
+  .progress-brutal {
+    height: 0.875rem;
+    width: 100%;
+    overflow: hidden;
+    border-radius: calc(var(--radius-brutal) - 2px);
+    border: 2px solid var(--brutal-ink);
+    background-color: var(--color-surface-2);
+    box-shadow: inset 2px 2px 0 color-mix(in oklab, var(--brutal-ink) 12%, transparent);
+  }
+
+  .progress-brutal-fill {
+    height: 100%;
+    background-color: var(--color-primary);
+    border-right: 2px solid var(--brutal-ink);
+  }
+
+  html:not(.dark) .progress-brutal-fill {
+    background-color: var(--color-success);
+  }
+
+  /* Icon button */
+  .icon-btn-brutal {
+    display: grid;
+    place-items: center;
+    height: 2.25rem;
+    width: 2.25rem;
+    border-radius: var(--radius-brutal);
+    border: 2px solid var(--brutal-ink);
+    background-color: var(--color-surface);
+    color: var(--color-text);
+    box-shadow: 2px 2px 0 0 var(--brutal-shadow-color);
+    transition: transform 0.08s, box-shadow 0.08s;
+  }
+
+  .icon-btn-brutal:active {
+    transform: translate(1px, 1px);
+    box-shadow: 1px 1px 0 0 var(--brutal-shadow-color);
+  }
+
+  .icon-btn-brutal:hover {
+    background-color: var(--color-surface-2);
+  }
+
+  /* Input field */
+  .input-brutal {
+    width: 100%;
+    border-radius: var(--radius-brutal);
+    border: var(--brutal-stroke) solid var(--brutal-ink);
+    background-color: var(--color-surface);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-text);
+    box-shadow: inset 2px 2px 0 color-mix(in oklab, var(--brutal-ink) 10%, transparent);
+    outline: none;
+  }
+
+  .input-brutal::placeholder {
+    color: var(--color-muted);
+    font-weight: 500;
+  }
+
+  .input-brutal:focus-visible {
+    box-shadow:
+      inset 2px 2px 0 color-mix(in oklab, var(--brutal-ink) 10%, transparent),
+      0 0 0 2px var(--color-warning);
+  }
+
+  .focus-ring:focus-visible {
+    outline: 3px solid var(--color-warning);
+    outline-offset: 2px;
+  }
+
+  /* App shell chrome */
+  .shell-brutal {
+    border-color: var(--brutal-ink);
+    background-color: var(--color-surface);
+    box-shadow: 0 var(--brutal-shadow-y) 0 0 var(--brutal-shadow-color);
+  }
+
+  /* Hero idle — fixed viewport, frames swap in place */
+  .hero-idle-viewport {
+    width: 5.5rem;
+    height: 11rem;
+    pointer-events: none;
+  }
+
+  .hero-idle-frame {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: bottom center;
+    image-rendering: pixelated;
+  }
+
+  .npc-idle-viewport-md {
+    position: relative;
+    width: 3.75rem;
+    height: 5.25rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .npc-idle-viewport-sm {
+    position: relative;
+    width: 2.75rem;
+    height: 3.75rem;
+    flex-shrink: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+
+  .npc-idle-frame {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    image-rendering: pixelated;
+  }
+
+  @media (min-width: 640px) {
+    .hero-idle-viewport {
+      width: 6.5rem;
+      height: 13rem;
+    }
+
+    .npc-idle-viewport-md {
+      width: 4.25rem;
+      height: 5.75rem;
+    }
+
+    .npc-idle-viewport-sm {
+      width: 3rem;
+      height: 4.125rem;
+    }
+  }
+}
+
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+@utility pl-safe {
+  padding-left: env(safe-area-inset-left);
+}
+@utility pr-safe {
+  padding-right: env(safe-area-inset-right);
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--brutal-ink) transparent;
+}
+
+@keyframes skeleton-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.skeleton-shimmer {
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}
