@@ -110,6 +110,27 @@ npm run preview
 
 Create an account at `/login`, then use the app. Each account has its own cloud save.
 
+### Deploy to Vercel (frontend + API)
+
+The repo includes `vercel.json` and `api/index.ts` so `/api/*` runs as serverless
+functions on the **same domain** as the PWA (session cookies work without CORS hacks).
+
+1. Import the GitHub repo on [Vercel](https://vercel.com).
+2. **Environment variables** (Project → Settings → Environment Variables):
+
+   | Variable | Required |
+   | -------- | -------- |
+   | `DATABASE_URL` | Yes — Neon connection string |
+   | `GEMINI_API_KEY` | Yes — for Mira chat |
+   | `CORS_ORIGINS` | Optional — add custom domains (e.g. `https://lifequest.example`) |
+
+3. Deploy. Run `npm run db:migrate` locally once against your Neon DB (or use Neon SQL editor).
+4. Open your Vercel URL → `/login` → register.
+
+**Separate API host** (Railway, Fly, etc.): deploy `npm run dev:server` / `server/index.ts`,
+set `VITE_SYNC_API_URL=https://your-api.example/api` at build time, and add your frontend
+origin to `CORS_ORIGINS`. Cross-origin cookies need `SameSite=None; Secure` (not the default).
+
 ### Environment variables
 
 | Variable | Where | Purpose |
@@ -118,9 +139,9 @@ Create an account at `/login`, then use the app. Each account has its own cloud 
 | `GEMINI_API_KEY` | server | Mira chat (Google AI Studio) |
 | `GEMINI_MODEL` | server | Optional model override |
 | `SESSION_DAYS` | server | Session cookie lifetime in days (default `30`) |
-| `CORS_ORIGINS` | server | Comma-separated allowed origins (set in production) |
-| `SYNC_PORT` | server | API port (default `3001`) |
-| `VITE_SYNC_API_URL` | client | API base URL (default `/api`, proxied in dev) |
+| `CORS_ORIGINS` | server | Comma-separated allowed origins (optional on Vercel — auto-includes deployment URL) |
+| `SYNC_PORT` | server | API port for local dev (default `3001`) |
+| `VITE_SYNC_API_URL` | client | API base URL (default `/api` — same origin on Vercel) |
 
 ### Database setup (Neon)
 

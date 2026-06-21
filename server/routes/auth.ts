@@ -16,7 +16,8 @@ import { createUser, findUserByEmail } from '../auth/userRepo.ts';
 import type { AuthVariables } from '../middleware/userAuth.ts';
 import { rateLimit } from '../middleware/rateLimit.ts';
 
-const isProd = process.env.NODE_ENV === 'production';
+const isProd =
+  process.env.NODE_ENV === 'production' || process.env.VERCEL === '1';
 
 function setSessionCookie(c: Parameters<typeof setCookie>[0], token: string) {
   setCookie(c, SESSION_COOKIE, token, {
