@@ -1,5 +1,5 @@
 /**
- * Vercel serverless catch-all — handles all /api/* routes.
+ * Vercel API handler — auth, sync, Mira (health is api/health.ts).
  */
 import { handle } from 'hono/vercel';
 import { Hono } from 'hono';
@@ -20,10 +20,6 @@ async function getApp(): Promise<LifeQuestApp> {
 }
 
 const wrapper = new Hono();
-
-wrapper.get('/api/health', (c) =>
-  c.json({ ok: true, service: 'lifequest-api', auth: true }),
-);
 
 wrapper.all('*', async (c) => {
   try {

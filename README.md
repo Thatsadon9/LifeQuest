@@ -112,7 +112,7 @@ Create an account at `/login`, then use the app. Each account has its own cloud 
 
 ### Deploy to Vercel (frontend + API)
 
-The repo includes `vercel.json` and `api/[[...route]].ts` so `/api/*` runs as serverless
+The repo includes `vercel.json`, `api/health.ts`, and `api/catchall.ts` so `/api/*` runs as serverless
 functions on the **same domain** as the PWA (session cookies work without CORS hacks).
 
 1. Import the GitHub repo on [Vercel](https://vercel.com) (production URL example: `https://lifequest0.vercel.app`).
