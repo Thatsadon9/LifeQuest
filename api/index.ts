@@ -7,27 +7,36 @@ import type { Hono as HonoType } from 'hono';
 
 type LifeQuestApp = HonoType;
 
-let appPromise: Promise<LifeQuestApp> | null = null;
+let app: LifeQuestApp | null = null;
+let appError: string | null = null;
 
-async function loadApp(): Promise<LifeQuestApp> {
-  if (!appPromise) {
-    appPromise = (async () => {
-      const [{ createApp }, { getPool }] = await Promise.all([
-        import('../server/app'),
-        import('../server/db/pool'),
-      ]);
-      return createApp(getPool());
-    })();
+async function getApp(): Promise<LifeQuestApp> {
+  if (app) return app;
+  if (appError) throw new Error(appError);
+
+  try {
+    const [{ createApp }, { getPool }] = await Promise.all([
+      import('../server/app.ts'),
+      import('../server/db/pool.ts'),
+    ]);
+    app = createApp(getPool());
+    return app;
+  } catch (err) {
+    appError = err instanceof Error ? err.message : String(err);
+    throw err;
   }
-  return appPromise;
 }
 
 const wrapper = new Hono();
 
+wrapper.get('/api/health', (c) =>
+  c.json({ ok: true, service: 'lifequest-api', auth: true }),
+);
+
 wrapper.all('*', async (c) => {
   try {
-    const app = await loadApp();
-    return app.fetch(c.req.raw);
+    const api = await getApp();
+    return api.fetch(c.req.raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     console.error('API request failed:', err);
