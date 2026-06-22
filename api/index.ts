@@ -3,28 +3,34 @@
  */
 import { handle } from 'hono/vercel';
 import { Hono } from 'hono';
-import { createApp } from '../server/app.ts';
-import { getPool } from '../server/db/pool.ts';
+import type { Hono as HonoType } from 'hono';
 
-function buildApp() {
-  return createApp(getPool());
-}
+type LifeQuestApp = HonoType;
 
-let app: ReturnType<typeof createApp> | null = null;
+let appPromise: Promise<LifeQuestApp> | null = null;
 
-function getApp() {
-  if (!app) app = buildApp();
-  return app;
+async function loadApp(): Promise<LifeQuestApp> {
+  if (!appPromise) {
+    appPromise = (async () => {
+      const [{ createApp }, { getPool }] = await Promise.all([
+        import('../server/app'),
+        import('../server/db/pool'),
+      ]);
+      return createApp(getPool());
+    })();
+  }
+  return appPromise;
 }
 
 const wrapper = new Hono();
 
-wrapper.all('*', (c) => {
+wrapper.all('*', async (c) => {
   try {
-    return getApp().fetch(c.req.raw, c.env);
+    const app = await loadApp();
+    return app.fetch(c.req.raw);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('API init failed:', err);
+    console.error('API request failed:', err);
     return c.json({ error: message, code: 'server_config' }, 503);
   }
 });
