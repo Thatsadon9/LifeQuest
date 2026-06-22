@@ -2,20 +2,34 @@
  * Vercel serverless entry — serves /api/* on the same origin as the PWA.
  */
 import { handle } from 'hono/vercel';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
+import { Hono } from 'hono';
 import { createApp } from '../server/app.ts';
+import { getPool } from '../server/db/pool.ts';
 
-neonConfig.webSocketConstructor = ws;
-
-if (!process.env.DATABASE_URL) {
-  throw new Error('DATABASE_URL is required on Vercel (Project → Settings → Environment Variables).');
+function buildApp() {
+  return createApp(getPool());
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const app = createApp(pool);
+let app: ReturnType<typeof createApp> | null = null;
 
-export default handle(app);
+function getApp() {
+  if (!app) app = buildApp();
+  return app;
+}
+
+const wrapper = new Hono();
+
+wrapper.all('*', (c) => {
+  try {
+    return getApp().fetch(c.req.raw, c.env);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('API init failed:', err);
+    return c.json({ error: message, code: 'server_config' }, 503);
+  }
+});
+
+export default handle(wrapper);
 
 export const config = {
   runtime: 'nodejs',

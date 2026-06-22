@@ -2,11 +2,12 @@
  * Local dev API server (production uses api/index.ts on Vercel).
  */
 import { serve } from '@hono/node-server';
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { neonConfig } from '@neondatabase/serverless';
 import ws from 'ws';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.ts';
+import { getPool } from './db/pool.ts';
 import { loadEnv } from './env.ts';
 
 neonConfig.webSocketConstructor = ws;
@@ -19,7 +20,7 @@ if (!process.env.DATABASE_URL) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = getPool();
 const app = createApp(pool);
 const port = Number(process.env.SYNC_PORT ?? 3001);
 

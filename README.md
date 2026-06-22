@@ -115,7 +115,7 @@ Create an account at `/login`, then use the app. Each account has its own cloud 
 The repo includes `vercel.json` and `api/index.ts` so `/api/*` runs as serverless
 functions on the **same domain** as the PWA (session cookies work without CORS hacks).
 
-1. Import the GitHub repo on [Vercel](https://vercel.com).
+1. Import the GitHub repo on [Vercel](https://vercel.com) (production URL example: `https://lifequest0.vercel.app`).
 2. **Environment variables** (Project → Settings → Environment Variables):
 
    | Variable | Required |
