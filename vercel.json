@@ -10,8 +10,21 @@
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/**/*.ts": {
+    "api/catchall.ts": {
+      "includeFiles": "server/**",
+      "maxDuration": 10
+    },
+    "api/sync.ts": {
+      "includeFiles": "server/**,src/lib/**,src/types/**",
       "maxDuration": 30
+    },
+    "api/mira/chat.ts": {
+      "includeFiles": "server/**,src/lib/**,src/types/**",
+      "maxDuration": 30
+    },
+    "api/mira/status.ts": {
+      "includeFiles": "server/**,src/lib/**,src/types/**",
+      "maxDuration": 10
     }
   }
 }
