@@ -1,29 +1,11 @@
-/**
- * Vercel API — auth routes (native Hono export, lightweight bundle).
- */
-import { createAuthApp } from '../server/authApp';
-import { getPool } from '../server/db/pool';
-
-function buildApp() {
-  return createAuthApp(getPool());
+/** Probe — confirms /api/* rewrite reaches catchall. */
+export default function handler(
+  _req: unknown,
+  res: { status: (code: number) => { json: (body: unknown) => void } },
+) {
+  res.status(200).json({ user: null, probe: 'catchall-ok' });
 }
-
-let app: ReturnType<typeof createAuthApp> | undefined;
-
-export default {
-  fetch(request: Request) {
-    try {
-      if (!app) app = buildApp();
-      return app.fetch(request);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error('Auth API error:', err);
-      return Response.json({ error: message, code: 'server_config' }, { status: 503 });
-    }
-  },
-};
 
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 10,
 };
