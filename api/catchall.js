@@ -2617,6 +2617,43 @@ function getPool() {
   return pool;
 }
 
+// scripts/vercel-request.ts
+function requestBody(req) {
+  const { body } = req;
+  if (body === void 0 || body === null) return void 0;
+  if (typeof body === "string") return body;
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(body)) {
+    return body.toString("utf8");
+  }
+  if (typeof body === "object") return JSON.stringify(body);
+  return String(body);
+}
+async function forwardToHono(app, req, res, defaultHost = "lifequest0.vercel.app") {
+  const host = String(req.headers.host ?? defaultHost);
+  const path = req.url?.startsWith("/") ? req.url : `/${req.url ?? ""}`;
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value === void 0) continue;
+    if (Array.isArray(value)) value.forEach((v) => headers.append(key, v));
+    else headers.set(key, value);
+  }
+  const init = { method: req.method ?? "GET", headers };
+  if (req.method && req.method !== "GET" && req.method !== "HEAD") {
+    const body = requestBody(req);
+    if (body !== void 0) init.body = body;
+  }
+  const response = await app.fetch(new Request(`https://${host}${path}`, init));
+  res.status(response.status);
+  response.headers.forEach((value, key) => {
+    if (key.toLowerCase() === "set-cookie" && res.appendHeader) {
+      res.appendHeader(key, value);
+    } else {
+      res.setHeader(key, value);
+    }
+  });
+  res.send(await response.text());
+}
+
 // scripts/vercel-auth-entry.ts
 var boot = (() => {
   try {
@@ -2633,28 +2670,7 @@ async function handler(req, res) {
     return;
   }
   try {
-    const host = String(req.headers.host ?? "lifequest0.vercel.app");
-    const path = req.url?.startsWith("/") ? req.url : `/${req.url ?? ""}`;
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(req.headers)) {
-      if (value === void 0) continue;
-      if (Array.isArray(value)) value.forEach((v) => headers.append(key, v));
-      else headers.set(key, value);
-    }
-    const init = { method: req.method ?? "GET", headers };
-    if (req.method && req.method !== "GET" && req.method !== "HEAD" && req.body) {
-      init.body = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
-    }
-    const response = await boot.app.fetch(new Request(`https://${host}${path}`, init));
-    res.status(response.status);
-    response.headers.forEach((value, key) => {
-      if (key.toLowerCase() === "set-cookie" && res.appendHeader) {
-        res.appendHeader(key, value);
-      } else {
-        res.setHeader(key, value);
-      }
-    });
-    res.send(await response.text());
+    await forwardToHono(boot.app, req, res);
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     res.status(503).json({ error: message, code: "server_config" });
