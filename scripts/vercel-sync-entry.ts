@@ -1,13 +1,15 @@
-/** Auth API for Vercel — static imports so the bundler includes api/_server. */
-import { createAuthApp } from './_server/authApp.ts';
-import { getPool } from './_server/db/pool.ts';
+/**
+ * Bundled entry for Vercel api/sync.js (sync + Mira routes).
+ */
+import { createApp } from '../server/app.ts';
+import { getPool } from '../server/db/pool.ts';
 
 const boot = (() => {
   try {
-    return { app: createAuthApp(getPool()), error: null as string | null };
+    return { app: createApp(getPool()), error: null as string | null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('Auth API boot failed:', err);
+    console.error('API boot failed:', err);
     return { app: null, error: message };
   }
 })();
@@ -27,7 +29,7 @@ type NodeRes = {
   json: (body: unknown) => void;
 };
 
-export default async function handler(req: NodeReq, res: NodeRes) {
+async function handler(req: NodeReq, res: NodeRes) {
   if (boot.error || !boot.app) {
     res.status(503).json({ error: boot.error ?? 'Server unavailable', code: 'server_config' });
     return;
@@ -64,7 +66,9 @@ export default async function handler(req: NodeReq, res: NodeRes) {
   }
 }
 
+export default handler;
+
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 10,
+  maxDuration: 30,
 };

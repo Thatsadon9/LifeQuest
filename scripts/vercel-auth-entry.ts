@@ -1,4 +1,19 @@
-/** Cloud sync API for Vercel. */
+/**
+ * Bundled entry for Vercel api/catchall.js — do not import from client.
+ */
+import { createAuthApp } from '../server/authApp.ts';
+import { getPool } from '../server/db/pool.ts';
+
+const boot = (() => {
+  try {
+    return { app: createAuthApp(getPool()), error: null as string | null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Auth API boot failed:', err);
+    return { app: null, error: message };
+  }
+})();
+
 type NodeReq = {
   method?: string;
   url?: string;
@@ -14,22 +29,13 @@ type NodeRes = {
   json: (body: unknown) => void;
 };
 
-let appFetch: ((request: Request) => Response | Promise<Response>) | null = null;
+async function handler(req: NodeReq, res: NodeRes) {
+  if (boot.error || !boot.app) {
+    res.status(503).json({ error: boot.error ?? 'Server unavailable', code: 'server_config' });
+    return;
+  }
 
-async function getAppFetch() {
-  if (appFetch) return appFetch;
-  const [{ createApp }, { getPool }] = await Promise.all([
-    import('./_server/app'),
-    import('./_server/db/pool'),
-  ]);
-  const app = createApp(getPool());
-  appFetch = (request: Request) => app.fetch(request);
-  return appFetch;
-}
-
-export default async function handler(req: NodeReq, res: NodeRes) {
   try {
-    const fetchApp = await getAppFetch();
     const host = String(req.headers.host ?? 'lifequest0.vercel.app');
     const path = req.url?.startsWith('/') ? req.url : `/${req.url ?? ''}`;
     const headers = new Headers();
@@ -44,7 +50,7 @@ export default async function handler(req: NodeReq, res: NodeRes) {
       init.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     }
 
-    const response = await fetchApp(new Request(`https://${host}${path}`, init));
+    const response = await boot.app.fetch(new Request(`https://${host}${path}`, init));
     res.status(response.status);
     response.headers.forEach((value, key) => {
       if (key.toLowerCase() === 'set-cookie' && res.appendHeader) {
@@ -60,7 +66,9 @@ export default async function handler(req: NodeReq, res: NodeRes) {
   }
 }
 
+export default handler;
+
 export const config = {
   runtime: 'nodejs',
-  maxDuration: 30,
+  maxDuration: 10,
 };

@@ -112,7 +112,7 @@ Create an account at `/login`, then use the app. Each account has its own cloud 
 
 ### Deploy to Vercel (frontend + API)
 
-The repo includes `vercel.json`, `api/health.ts`, and `api/catchall.ts` so `/api/*` runs as serverless
+The repo includes `vercel.json`, `api/health.ts`, and esbuild-bundled `api/catchall.js` / `api/sync.js` so `/api/*` runs as serverless
 functions on the **same domain** as the PWA (session cookies work without CORS hacks).
 
 1. Import the GitHub repo on [Vercel](https://vercel.com) (production URL example: `https://lifequest0.vercel.app`).
@@ -124,7 +124,7 @@ functions on the **same domain** as the PWA (session cookies work without CORS h
    | `GEMINI_API_KEY` | Yes — for Mira chat |
    | `CORS_ORIGINS` | Optional — add custom domains (e.g. `https://lifequest.example`) |
 
-3. Deploy. Vercel runs `node scripts/copy-server-for-vercel.mjs` before `npm run build`.
+3. Deploy. Vercel runs `npm run bundle:vercel` then `npm run build`.
 4. Run `npm run db:migrate` locally once against your Neon DB (or use Neon SQL editor).
 5. Open your Vercel URL → `/login` → register.
 
