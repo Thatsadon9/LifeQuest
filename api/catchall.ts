@@ -1,4 +1,17 @@
-/** Auth API for Vercel — uses api/_server copy bundled at build time. */
+/** Auth API for Vercel — static imports so the bundler includes api/_server. */
+import { createAuthApp } from './_server/authApp.ts';
+import { getPool } from './_server/db/pool.ts';
+
+const boot = (() => {
+  try {
+    return { app: createAuthApp(getPool()), error: null as string | null };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error('Auth API boot failed:', err);
+    return { app: null, error: message };
+  }
+})();
+
 type NodeReq = {
   method?: string;
   url?: string;
@@ -14,22 +27,13 @@ type NodeRes = {
   json: (body: unknown) => void;
 };
 
-let appFetch: ((request: Request) => Response | Promise<Response>) | null = null;
-
-async function getAppFetch() {
-  if (appFetch) return appFetch;
-  const [{ createAuthApp }, { getPool }] = await Promise.all([
-    import('./_server/authApp'),
-    import('./_server/db/pool'),
-  ]);
-  const app = createAuthApp(getPool());
-  appFetch = (request: Request) => app.fetch(request);
-  return appFetch;
-}
-
 export default async function handler(req: NodeReq, res: NodeRes) {
+  if (boot.error || !boot.app) {
+    res.status(503).json({ error: boot.error ?? 'Server unavailable', code: 'server_config' });
+    return;
+  }
+
   try {
-    const fetchApp = await getAppFetch();
     const host = String(req.headers.host ?? 'lifequest0.vercel.app');
     const path = req.url?.startsWith('/') ? req.url : `/${req.url ?? ''}`;
     const headers = new Headers();
@@ -44,7 +48,7 @@ export default async function handler(req: NodeReq, res: NodeRes) {
       init.body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     }
 
-    const response = await fetchApp(new Request(`https://${host}${path}`, init));
+    const response = await boot.app.fetch(new Request(`https://${host}${path}`, init));
     res.status(response.status);
     response.headers.forEach((value, key) => {
       if (key.toLowerCase() === 'set-cookie' && res.appendHeader) {
@@ -56,7 +60,6 @@ export default async function handler(req: NodeReq, res: NodeRes) {
     res.send(await response.text());
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('Auth handler failed:', err);
     res.status(503).json({ error: message, code: 'server_config' });
   }
 }
