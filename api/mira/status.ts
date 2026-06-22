@@ -1,17 +1,16 @@
 /**
- * Vercel API handler — auth routes (lightweight bundle, no Gemini).
+ * Vercel serverless — Mira status endpoint.
  */
 import { handle } from 'hono/vercel';
 import { Hono } from 'hono';
-import { createAuthApp } from '../server/authApp.ts';
+import { createApp } from '../server/app.ts';
 import { getPool } from '../server/db/pool.ts';
 
 const boot = (() => {
   try {
-    return { app: createAuthApp(getPool()), error: null as string | null };
+    return { app: createApp(getPool()), error: null as string | null };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('Auth API boot failed:', err);
     return { app: null, error: message };
   }
 })();

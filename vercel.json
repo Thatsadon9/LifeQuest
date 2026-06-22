@@ -3,6 +3,9 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
+    { "source": "/api/sync", "destination": "/api/sync" },
+    { "source": "/api/mira/chat", "destination": "/api/mira/chat" },
+    { "source": "/api/mira/status", "destination": "/api/mira/status" },
     { "source": "/api/(.*)", "destination": "/api/catchall" },
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
