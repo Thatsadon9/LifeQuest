@@ -1,5 +1,5 @@
 /**
- * Local dev API server (production uses api/index.ts on Vercel).
+ * Local dev API server (production uses api/[[...route]].ts on Vercel).
  */
 import { serve } from '@hono/node-server';
 import { neonConfig } from '@neondatabase/serverless';
