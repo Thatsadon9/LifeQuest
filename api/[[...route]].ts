@@ -1,5 +1,5 @@
 /**
- * Vercel serverless entry — serves /api/* on the same origin as the PWA.
+ * Vercel serverless catch-all — handles /api and /api/* on the same origin as the PWA.
  */
 import { handle } from 'hono/vercel';
 import { Hono } from 'hono';
