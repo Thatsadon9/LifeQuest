@@ -1,31 +1,27 @@
 /**
- * Vercel API handler — auth routes (lightweight bundle, no Gemini).
+ * Vercel API — auth routes (native Hono export, lightweight bundle).
  */
-import { handle } from 'hono/vercel';
-import { Hono } from 'hono';
-import { createAuthApp } from '../server/authApp.ts';
-import { getPool } from '../server/db/pool.ts';
+import { createAuthApp } from '../server/authApp';
+import { getPool } from '../server/db/pool';
 
-const boot = (() => {
-  try {
-    return { app: createAuthApp(getPool()), error: null as string | null };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error('Auth API boot failed:', err);
-    return { app: null, error: message };
-  }
-})();
+function buildApp() {
+  return createAuthApp(getPool());
+}
 
-const wrapper = new Hono();
+let app: ReturnType<typeof createAuthApp> | undefined;
 
-wrapper.all('*', (c) => {
-  if (boot.error || !boot.app) {
-    return c.json({ error: boot.error ?? 'Server unavailable', code: 'server_config' }, 503);
-  }
-  return boot.app.fetch(c.req.raw);
-});
-
-export default handle(wrapper);
+export default {
+  fetch(request: Request) {
+    try {
+      if (!app) app = buildApp();
+      return app.fetch(request);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('Auth API error:', err);
+      return Response.json({ error: message, code: 'server_config' }, { status: 503 });
+    }
+  },
+};
 
 export const config = {
   runtime: 'nodejs',
