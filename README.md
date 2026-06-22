@@ -124,8 +124,9 @@ functions on the **same domain** as the PWA (session cookies work without CORS h
    | `GEMINI_API_KEY` | Yes — for Mira chat |
    | `CORS_ORIGINS` | Optional — add custom domains (e.g. `https://lifequest.example`) |
 
-3. Deploy. Run `npm run db:migrate` locally once against your Neon DB (or use Neon SQL editor).
-4. Open your Vercel URL → `/login` → register.
+3. Deploy. Vercel runs `node scripts/copy-server-for-vercel.mjs` before `npm run build`.
+4. Run `npm run db:migrate` locally once against your Neon DB (or use Neon SQL editor).
+5. Open your Vercel URL → `/login` → register.
 
 **Separate API host** (Railway, Fly, etc.): deploy `npm run dev:server` / `server/index.ts`,
 set `VITE_SYNC_API_URL=https://your-api.example/api` at build time, and add your frontend

@@ -1,4 +1,4 @@
-/** Auth API for Vercel — dynamic boot with server bundle via includeFiles. */
+/** Auth API for Vercel — uses api/_server copy bundled at build time. */
 type NodeReq = {
   method?: string;
   url?: string;
@@ -19,8 +19,8 @@ let appFetch: ((request: Request) => Response | Promise<Response>) | null = null
 async function getAppFetch() {
   if (appFetch) return appFetch;
   const [{ createAuthApp }, { getPool }] = await Promise.all([
-    import('../server/authApp'),
-    import('../server/db/pool'),
+    import('./_server/authApp'),
+    import('./_server/db/pool'),
   ]);
   const app = createAuthApp(getPool());
   appFetch = (request: Request) => app.fetch(request);

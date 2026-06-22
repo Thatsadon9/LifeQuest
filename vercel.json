@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build",
+  "buildCommand": "node scripts/copy-server-for-vercel.mjs && npm run build",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/sync", "destination": "/api/sync" },
@@ -10,21 +10,8 @@
     { "source": "/((?!api).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/catchall.ts": {
-      "includeFiles": "server/**",
-      "maxDuration": 10
-    },
-    "api/sync.ts": {
-      "includeFiles": "server/**,src/lib/**,src/types/**",
+    "api/**/*.ts": {
       "maxDuration": 30
-    },
-    "api/mira/chat.ts": {
-      "includeFiles": "server/**,src/lib/**,src/types/**",
-      "maxDuration": 30
-    },
-    "api/mira/status.ts": {
-      "includeFiles": "server/**,src/lib/**,src/types/**",
-      "maxDuration": 10
     }
   }
 }
